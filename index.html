@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>iPad Hausaufgabenheft</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Touch Scrollbar & Touch optimizations */
+        body {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        input, textarea, select {
+            user-select: text;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(150, 150, 150, 0.3);
+            border-radius: 10px;
+        }
+
+        /* Glassmorphism Theme Dynamic Styles */
+        .theme-dark .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .theme-light .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .theme-dark .glass-modal {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .theme-light .glass-modal {
+            background: rgba(241, 245, 249, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body id="app-body" class="theme-dark h-full flex flex-col font-sans overflow-hidden bg-slate-950 text-slate-100">
+
+    <!-- Top Header Navigation -->
+    <header class="px-6 py-4 glass-card border-b border-slate-800/80 flex justify-between items-center z-10 transition-colors">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-book-bookmark text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide text-slate-900 dark:text-white" id="header-title">Hausaufgabenheft</h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400" id="current-date-display">Montag, 1. September</p>
+            </div>
+        </div>
+
+        <!-- Right Header Actions -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Light/Dark Mode Switcher -->
+            <button onclick="toggleTheme()" id="theme-toggle-btn" title="Design wechseln" class="p-2.5 rounded-xl glass-card text-amber-400 hover:text-amber-300 transition flex items-center justify-center active:scale-95">
+                <i class="fa-solid fa-sun text-lg" id="theme-icon"></i>
+            </button>
+
+            <!-- Notifications Permission Button -->
+            <button onclick="requestNotificationPermission()" id="notification-btn" title="Benachrichtigungen aktivieren" class="p-2.5 rounded-xl glass-card text-slate-400 hover:text-indigo-400 transition flex items-center justify-center active:scale-95 relative">
+                <i class="fa-solid fa-bell text-lg"></i>
+                <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900"></span>
+            </button>
+
+            <button onclick="openGuideModal()" class="px-3.5 py-2 rounded-xl glass-card text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition flex items-center space-x-2 text-sm font-medium active:scale-95">
+                <i class="fa-solid fa-circle-question text-indigo-500"></i>
+                <span class="hidden md:inline">Anleitung</span>
+            </button>
+            <button onclick="openAddTaskModal()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold shadow-lg shadow-indigo-500/25 active:scale-95 transition flex items-center space-x-2 text-sm">
+                <i class="fa-solid fa-plus text-base"></i>
+                <span class="hidden sm:inline">Neue Aufgabe</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+        <!-- Left Sidebar (Stats, Subjects & Filters) -->
+        <aside class="w-full md:w-80 glass-card border-r border-slate-200 dark:border-slate-800 flex flex-col p-5 overflow-y-auto custom-scrollbar space-y-6">
+
+            <!-- Stats Widget -->
+            <div class="bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700/50">
+                <h2 class="text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 mb-3">Tages-Übersicht</h2>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div class="bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Offen</span>
+                        <p class="text-2xl font-bold text-amber-500 dark:text-amber-400 mt-1" id="stat-pending">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Erledigt</span>
+                        <p class="text-2xl font-bold text-emerald-500 dark:text-emerald-400 mt-1" id="stat-completed">0</p>
+                    </div>
+                </div>
+                <!-- Progress Bar -->
+                <div>
+                    <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        <span>Fortschritt</span>
+                        <span id="stat-percent">0%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-200 dark:bg-slate-900 rounded-full overflow-hidden">
+                        <div id="stat-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Status -->
+            <div>
+                <h2 class="text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 mb-2">Status Filter</h2>
+                <div class="space-y-1">
+                    <button onclick="setFilter('status', 'all')" class="filter-btn-status w-full text-left px-3.5 py-2.5 rounded-xl flex items-center justify-between text-sm transition bg-indigo-500/10 dark:bg-indigo-600/30 text-indigo-600 dark:text-indigo-300 font-medium border border-indigo-500/20 dark:border-indigo-500/30" data-status="all">
+                        <span><i class="fa-solid fa-layer-group w-5"></i> Alle Aufgaben</span>
+                        <span class="text-xs bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full" id="count-all">0</span>
+                    </button>
+                    <button onclick="setFilter('status', 'pending')" class="filter-btn-status w-full text-left px-3.5 py-2.5 rounded-xl flex items-center justify-between text-sm transition text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50" data-status="pending">
+                        <span><i class="fa-regular fa-circle w-5"></i> Offen</span>
+                        <span class="text-xs bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full" id="count-pending">0</span>
+                    </button>
+                    <button onclick="setFilter('status', 'completed')" class="filter-btn-status w-full text-left px-3.5 py-2.5 rounded-xl flex items-center justify-between text-sm transition text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50" data-status="completed">
+                        <span><i class="fa-regular fa-circle-check w-5 text-emerald-500"></i> Erledigt</span>
+                        <span class="text-xs bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full" id="count-completed">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Subjects -->
+            <div class="flex-1">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Fächer / Kategorien</h2>
+                    <button onclick="openAddSubjectModal()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium flex items-center gap-1 active:scale-95 transition">
+                        <i class="fa-solid fa-plus"></i> Neu
+                    </button>
+                </div>
+                <div class="space-y-1" id="subject-filter-list">
+                    <!-- Dynamic subjects filter list -->
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Right Main View (Tasks List) -->
+        <main class="flex-1 p-6 overflow-y-auto custom-scrollbar flex flex-col">
+            
+            <!-- Sorting & Search Control Bar -->
+            <div class="flex flex-col sm:flex-row gap-3 justify-between items-center mb-6">
+                <!-- Search Input -->
+                <div class="relative w-full sm:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                    <input type="text" id="search-input" oninput="renderTasks()" placeholder="Aufgabe suchen..." class="w-full pl-10 pr-4 py-2 rounded-xl bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition shadow-sm">
+                </div>
+
+                <!-- Sort dropdown -->
+                <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                    <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sortieren:</span>
+                    <select id="sort-select" onchange="renderTasks()" class="bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 text-xs text-slate-800 dark:text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 shadow-sm">
+                        <option value="date-asc">Abgabedatum (Demnächst zuerst)</option>
+                        <option value="date-desc">Abgabedatum (Später zuerst)</option>
+                        <option value="priority">Höchste Priorität</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Task Items Container -->
+            <div id="tasks-container" class="space-y-3 flex-1">
+                <!-- Task items will be inserted dynamically here -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center my-12">
+                <div class="w-20 h-20 bg-slate-200/60 dark:bg-slate-800/50 rounded-full flex items-center justify-center text-slate-400 dark:text-slate-500 mb-4 border border-slate-300 dark:border-slate-700/50">
+                    <i class="fa-solid fa-check-double text-3xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-300">Keine Aufgaben gefunden</h3>
+                <p class="text-sm text-slate-500 max-w-sm mt-1">Du hast aktuell keine Aufgaben für die ausgewählten Filter oder alle Hausaufgaben erledigt!</p>
+                <button onclick="openAddTaskModal()" class="mt-4 px-4 py-2 rounded-xl bg-indigo-500/10 dark:bg-indigo-600/30 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 text-sm font-medium transition">
+                    + Neue Aufgabe hinzufügen
+                </button>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal: Add Task -->
+    <div id="add-task-modal" class="fixed inset-0 z-50 glass-modal flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative transform scale-95 transition-transform duration-200" id="add-task-modal-content">
+            <button onclick="closeAddTaskModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white p-2 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-plus-circle text-indigo-500"></i>
+                Neue Hausaufgabe
+            </h2>
+
+            <form id="add-task-form" onsubmit="handleAddTask(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Titel der Aufgabe *</label>
+                    <input type="text" id="input-title" required placeholder="z. B. S. 42 Ex. 3a-c lesen & rechnen" class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Fach / Kategorie *</label>
+                        <select id="input-subject" required class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                            <!-- Dynamic subject options -->
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Abgabedatum *</label>
+                        <input type="date" id="input-date" required class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Priorität</label>
+                        <select id="input-priority" class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                            <option value="low">Niedrig (Normal)</option>
+                            <option value="medium" selected>Mittel</option>
+                            <option value="high">🔥 Sehr Dringend (Erinnerung 1 Tag vorher 13:30)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center pt-5">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="input-notif" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 relative"></div>
+                            <span class="ml-3 text-xs font-medium text-slate-600 dark:text-slate-300">Push-Erinnerung</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Zusätzliche Notizen</label>
+                    <textarea id="input-notes" rows="3" placeholder="Optionale Details, Buchseiten oder Gruppenpartner..." class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddTaskModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm font-medium transition">Abbrechen</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/30 transition">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Subject / Category -->
+    <div id="add-subject-modal" class="fixed inset-0 z-50 glass-modal flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 relative transform scale-95 transition-transform duration-200" id="add-subject-modal-content">
+            <button onclick="closeAddSubjectModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white p-2 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-tags text-indigo-500"></i>
+                Neue Kategorie
+            </h2>
+
+            <form id="add-subject-form" onsubmit="handleAddSubject(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Kategoriename *</label>
+                    <input type="text" id="input-subject-name" required placeholder="z. B. Physik, Informatik..." class="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Farbe auswählen</label>
+                    <div class="grid grid-cols-5 gap-2" id="color-picker-container">
+                        <!-- Color radio options populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddSubjectModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm font-medium transition">Abbrechen</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/30 transition">Erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Interactive Guide & iPad Installation -->
+    <div id="guide-modal" class="fixed inset-0 z-50 glass-modal flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-200" id="guide-modal-content">
+            <button onclick="closeGuideModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white p-2 text-lg z-10">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-tablet-screen-button text-indigo-500"></i>
+                Anleitung & iPad Integration
+            </h2>
+
+            <div class="overflow-y-auto custom-scrollbar flex-1 pr-2 space-y-4 text-sm text-slate-600 dark:text-slate-300">
+                <div class="bg-slate-100 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-up-from-bracket text-indigo-500"></i> Als iPad Web-App speichern
+                    </h3>
+                    <ol class="list-decimal list-inside space-y-2 text-slate-600 dark:text-slate-300">
+                        <li>Öffne diese HTML-Datei im <strong>Safari Browser</strong> auf deinem iPad.</li>
+                        <li>Tippe oben auf das <strong>Teilen-Symbol</strong> (Quadrat mit Pfeil nach oben).</li>
+                        <li>Scrolle nach unten und wähle <strong>"Zum Home-Bildschirm"</strong>.</li>
+                        <li>Jetzt läuft die Anwendung wie eine echte App auf deinem iPad!</li>
+                    </ol>
+                </div>
+
+                <div class="bg-slate-100 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-indigo-500"></i> Wie funktionieren die Benachrichtigungen?
+                    </h3>
+                    <p class="text-slate-600 dark:text-slate-300">
+                        Klicke oben rechts auf das <strong>Glocken-Symbol</strong>, um Safari die Erlaubnis für Mitteilungen zu geben. Bei Aufgaben mit hoher Priorität oder aktivierter Erinnerung erhältst du am <strong>Vortag um 13:30 Uhr</strong> eine direkte Mitteilung auf deinem iPad.
+                    </p>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                <button onclick="closeGuideModal()" class="px-5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-sm font-medium transition">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Color preset mapping
+        const COLOR_OPTIONS = [
+            { id: 'emerald', color: 'bg-emerald-500', text: 'text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/40', bgLight: 'bg-emerald-500/10' },
+            { id: 'blue', color: 'bg-blue-500', text: 'text-blue-500 dark:text-blue-400', border: 'border-blue-500/40', bgLight: 'bg-blue-500/10' },
+            { id: 'rose', color: 'bg-rose-500', text: 'text-rose-500 dark:text-rose-400', border: 'border-rose-500/40', bgLight: 'bg-rose-500/10' },
+            { id: 'amber', color: 'bg-amber-500', text: 'text-amber-500 dark:text-amber-400', border: 'border-amber-500/40', bgLight: 'bg-amber-500/10' },
+            { id: 'purple', color: 'bg-purple-500', text: 'text-purple-500 dark:text-purple-400', border: 'border-purple-500/40', bgLight: 'bg-purple-500/10' },
+            { id: 'cyan', color: 'bg-cyan-500', text: 'text-cyan-500 dark:text-cyan-400', border: 'border-cyan-500/40', bgLight: 'bg-cyan-500/10' },
+            { id: 'orange', color: 'bg-orange-500', text: 'text-orange-500 dark:text-orange-400', border: 'border-orange-500/40', bgLight: 'bg-orange-500/10' },
+            { id: 'pink', color: 'bg-pink-500', text: 'text-pink-500 dark:text-pink-400', border: 'border-pink-500/40', bgLight: 'bg-pink-500/10' },
+            { id: 'teal', color: 'bg-teal-500', text: 'text-teal-500 dark:text-teal-400', border: 'border-teal-500/40', bgLight: 'bg-teal-500/10' },
+            { id: 'slate', color: 'bg-slate-500', text: 'text-slate-500 dark:text-slate-400', border: 'border-slate-500/40', bgLight: 'bg-slate-500/10' }
+        ];
+
+        // Standard preconfigured subjects ("Grünflächen" & default school subjects)
+        const DEFAULT_SUBJECTS = [
+            { id: 'math', name: 'Mathematik', ...COLOR_OPTIONS[1] },
+            { id: 'german', name: 'Deutsch', ...COLOR_OPTIONS[2] },
+            { id: 'english', name: 'Englisch', ...COLOR_OPTIONS[3] },
+            { id: 'science', name: 'Naturwissenschaften (Bio/Physik/Chemie)', ...COLOR_OPTIONS[0] },
+            { id: 'history', name: 'Geschichte / Geo', ...COLOR_OPTIONS[6] },
+            { id: 'art', name: 'Kunst / Musik', ...COLOR_OPTIONS[4] },
+            { id: 'other', name: 'Sonstiges', ...COLOR_OPTIONS[9] }
+        ];
+
+        // App State
+        let SUBJECTS = [];
+        let tasks = [];
+        let activeStatusFilter = 'all';
+        let activeSubjectFilter = 'all';
+        let selectedColorIndex = 0;
+        let notifiedTaskIds = new Set();
+
+        window.onload = function() {
+            // App Start Date Header
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date-display').innerText = now.toLocaleDateString('de-DE', options);
+
+            loadTheme();
+            loadSubjects();
+            populateSubjectSelect();
+            initColorPicker();
+            loadTasks();
+
+            // Set default date picker to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('input-date').value = tomorrow.toISOString().split('T')[0];
+
+            renderSubjectFilters();
+            renderTasks();
+
+            // Notification check schedule (runs every minute)
+            checkNotifications();
+            setInterval(checkNotifications, 60000);
+            updateNotifBadge();
+        };
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('ipad_homework_theme') || 'dark';
+            setTheme(savedTheme);
+        }
+
+        function setTheme(theme) {
+            const body = document.getElementById('app-body');
+            const icon = document.getElementById('theme-icon');
+            if (theme === 'light') {
+                body.className = "theme-light h-full flex flex-col font-sans overflow-hidden bg-slate-100 text-slate-800";
+                icon.className = "fa-solid fa-moon text-indigo-600 text-lg";
+                document.documentElement.classList.remove('dark');
+            } else {
+                body.className = "theme-dark h-full flex flex-col font-sans overflow-hidden bg-slate-950 text-slate-100";
+                icon.className = "fa-solid fa-sun text-amber-400 text-lg";
+                document.documentElement.classList.add('dark');
+            }
+            localStorage.setItem('ipad_homework_theme', theme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = localStorage.getItem('ipad_homework_theme') === 'light' ? 'dark' : 'light';
+            setTheme(currentTheme);
+        }
+
+        function requestNotificationPermission() {
+            if (!("Notification" in window)) {
+                alert("Dein Browser unterstützt keine System-Benachrichtigungen.");
+                return;
+            }
+
+            Notification.requestPermission().then(permission => {
+                updateNotifBadge();
+                if (permission === "granted") {
+                    new Notification("Hausaufgabenheft", {
+                        body: "Erinnerungen für dringende Aufgaben um 13:30 Uhr aktiviert!",
+                        icon: "https://cdn-icons-png.flaticon.com/512/3209/3209265.png"
+                    });
+                }
+            });
+        }
+
+        function updateNotifBadge() {
+            const badge = document.getElementById('notif-badge');
+            const btn = document.getElementById('notification-btn');
+            if ("Notification" in window && Notification.permission === "granted") {
+                badge.classList.remove('hidden');
+                btn.classList.add('text-indigo-400');
+            } else {
+                badge.classList.add('hidden');
+                btn.classList.remove('text-indigo-400');
+            }
+        }
+
+        function checkNotifications() {
+            if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+
+            // Check if current time is around 13:30 (between 13:30 and 13:35)
+            const is1330 = (currentHours === 13 && currentMinutes >= 30 && currentMinutes <= 35);
+
+            tasks.forEach(task => {
+                if (task.completed) return;
+                if (!task.notify && task.priority !== 'high') return;
+                if (notifiedTaskIds.has(task.id)) return;
+
+                // Calculate date difference
+                const dueDate = new Date(task.date);
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const due = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+                const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
+
+                // If due tomorrow and time is around 13:30, OR if overdue/due today at 13:30
+                if ((diffDays === 1 && is1330) || (diffDays === 1 && task.priority === 'high' && is1330)) {
+                    const sub = SUBJECTS.find(s => s.id === task.subjectId);
+                    const subName = sub ? sub.name : 'Hausaufgabe';
+
+                    new Notification(`🚨 Dringend: ${subName}`, {
+                        body: `Morgen abzugeben: ${task.title}`,
+                        tag: task.id
+                    });
+
+                    notifiedTaskIds.add(task.id);
+                }
+            });
+        }
+
+        function loadSubjects() {
+            const saved = localStorage.getItem('ipad_homework_subjects');
+            if (saved) {
+                try {
+                    SUBJECTS = JSON.parse(saved);
+                } catch(e) {
+                    SUBJECTS = [...DEFAULT_SUBJECTS];
+                }
+            } else {
+                SUBJECTS = [...DEFAULT_SUBJECTS];
+                saveSubjects();
+            }
+        }
+
+        function saveSubjects() {
+            localStorage.setItem('ipad_homework_subjects', JSON.stringify(SUBJECTS));
+        }
+
+        function populateSubjectSelect() {
+            const select = document.getElementById('input-subject');
+            select.innerHTML = SUBJECTS.map(sub => `
+                <option value="${sub.id}">${escapeHtml(sub.name)}</option>
+            `).join('');
+        }
+
+        function initColorPicker() {
+            const container = document.getElementById('color-picker-container');
+            container.innerHTML = COLOR_OPTIONS.map((c, idx) => `
+                <label class="cursor-pointer">
+                    <input type="radio" name="subject-color" value="${idx}" ${idx === 0 ? 'checked' : ''} onchange="selectedColorIndex = ${idx}" class="peer hidden">
+                    <div class="w-9 h-9 rounded-xl ${c.color} flex items-center justify-center border-2 border-transparent peer-checked:border-white peer-checked:scale-110 transition">
+                        <i class="fa-solid fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                    </div>
+                </label>
+            `).join('');
+        }
+
+        function renderSubjectFilters() {
+            const container = document.getElementById('subject-filter-list');
+            
+            let html = `
+                <button onclick="setFilter('subject', 'all')" class="filter-btn-subject w-full text-left px-3.5 py-2 rounded-xl flex items-center justify-between text-xs transition ${activeSubjectFilter === 'all' ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}" data-subject="all">
+                    <span>Alle Fächer</span>
+                </button>
+            `;
+
+            SUBJECTS.forEach(sub => {
+                const count = tasks.filter(t => t.subjectId === sub.id && !t.completed).length;
+                const isDeletable = SUBJECTS.length > 1;
+
+                html += `
+                    <div class="group flex items-center justify-between rounded-xl hover:bg-slate-200/50 dark:hover:bg-slate-800/40 px-1">
+                        <button onclick="setFilter('subject', '${sub.id}')" class="filter-btn-subject flex-1 text-left px-2.5 py-2 flex items-center justify-between text-xs transition ${activeSubjectFilter === sub.id ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}" data-subject="${sub.id}">
+                            <span class="flex items-center space-x-2 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full ${sub.color} flex-shrink-0"></span>
+                                <span class="truncate">${escapeHtml(sub.name)}</span>
+                            </span>
+                            ${count > 0 ? `<span class="text-[10px] bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full text-slate-700 dark:text-slate-300 ml-2">${count}</span>` : ''}
+                        </button>
+                        ${isDeletable ? `
+                            <button onclick="deleteSubject('${sub.id}')" title="Kategorie löschen" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 px-2 py-1 text-xs transition">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function handleAddSubject(event) {
+            event.preventDefault();
+            const nameInput = document.getElementById('input-subject-name');
+            const name = nameInput.value.trim();
+
+            if (!name) return;
+
+            const colorObj = COLOR_OPTIONS[selectedColorIndex] || COLOR_OPTIONS[0];
+
+            const newSubject = {
+                id: 'sub_' + Date.now(),
+                name: name,
+                ...colorObj
+            };
+
+            SUBJECTS.push(newSubject);
+            saveSubjects();
+            populateSubjectSelect();
+            renderSubjectFilters();
+            closeAddSubjectModal();
+
+            nameInput.value = '';
+        }
+
+        function deleteSubject(subId) {
+            const hasTasks = tasks.some(t => t.subjectId === subId);
+            if (hasTasks) {
+                const fallbackSub = SUBJECTS.find(s => s.id !== subId) || SUBJECTS[0];
+                tasks = tasks.map(t => t.subjectId === subId ? { ...t, subjectId: fallbackSub.id } : t);
+                saveTasks();
+            }
+
+            SUBJECTS = SUBJECTS.filter(s => s.id !== subId);
+            if (activeSubjectFilter === subId) {
+                activeSubjectFilter = 'all';
+            }
+
+            saveSubjects();
+            populateSubjectSelect();
+            renderSubjectFilters();
+            renderTasks();
+        }
+
+        function loadTasks() {
+            const saved = localStorage.getItem('ipad_homework_tasks');
+            if (saved) {
+                try {
+                    tasks = JSON.parse(saved);
+                } catch(e) {
+                    tasks = [];
+                }
+            } else {
+                tasks = [];
+            }
+        }
+
+        function saveTasks() {
+            localStorage.setItem('ipad_homework_tasks', JSON.stringify(tasks));
+        }
+
+        function handleAddTask(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('input-title').value.trim();
+            const subjectId = document.getElementById('input-subject').value;
+            const date = document.getElementById('input-date').value;
+            const priority = document.getElementById('input-priority').value;
+            const notify = document.getElementById('input-notif').checked;
+            const notes = document.getElementById('input-notes').value.trim();
+
+            if (!title || !subjectId || !date) return;
+
+            const newTask = {
+                id: 'task_' + Date.now(),
+                title: title,
+                subjectId: subjectId,
+                date: date,
+                priority: priority,
+                notify: notify,
+                notes: notes,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+
+            tasks.push(newTask);
+            saveTasks();
+            renderTasks();
+            renderSubjectFilters();
+            closeAddTaskModal();
+
+            // Reset Form
+            document.getElementById('add-task-form').reset();
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('input-date').value = tomorrow.toISOString().split('T')[0];
+        }
+
+        function toggleTaskComplete(taskId) {
+            tasks = tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t);
+            saveTasks();
+            renderTasks();
+            renderSubjectFilters();
+        }
+
+        function deleteTask(taskId) {
+            tasks = tasks.filter(t => t.id !== taskId);
+            saveTasks();
+            renderTasks();
+            renderSubjectFilters();
+        }
+
+        function setFilter(type, value) {
+            if (type === 'status') {
+                activeStatusFilter = value;
+                document.querySelectorAll('.filter-btn-status').forEach(btn => {
+                    if (btn.dataset.status === value) {
+                        btn.className = "filter-btn-status w-full text-left px-3.5 py-2.5 rounded-xl flex items-center justify-between text-sm transition bg-indigo-500/10 dark:bg-indigo-600/30 text-indigo-600 dark:text-indigo-300 font-medium border border-indigo-500/20 dark:border-indigo-500/30";
+                    } else {
+                        btn.className = "filter-btn-status w-full text-left px-3.5 py-2.5 rounded-xl flex items-center justify-between text-sm transition text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50";
+                    }
+                });
+            } else if (type === 'subject') {
+                activeSubjectFilter = value;
+                renderSubjectFilters();
+            }
+            renderTasks();
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('tasks-container');
+            const emptyState = document.getElementById('empty-state');
+            const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+            const sortVal = document.getElementById('sort-select').value;
+
+            // Filter tasks
+            let filtered = tasks.filter(t => {
+                if (activeStatusFilter === 'pending' && t.completed) return false;
+                if (activeStatusFilter === 'completed' && !t.completed) return false;
+                if (activeSubjectFilter !== 'all' && t.subjectId !== activeSubjectFilter) return false;
+                if (searchVal && !t.title.toLowerCase().includes(searchVal) && !t.notes.toLowerCase().includes(searchVal)) return false;
+                return true;
+            });
+
+            // Sort tasks
+            filtered.sort((a, b) => {
+                if (sortVal === 'date-asc') return new Date(a.date) - new Date(b.date);
+                if (sortVal === 'date-desc') return new Date(b.date) - new Date(a.date);
+                if (sortVal === 'priority') {
+                    const prioMap = { high: 3, medium: 2, low: 1 };
+                    return prioMap[b.priority] - prioMap[a.priority];
+                }
+                return 0;
+            });
+
+            // Update stats
+            const totalPending = tasks.filter(t => !t.completed).length;
+            const totalCompleted = tasks.filter(t => t.completed).length;
+            const totalAll = tasks.length;
+            const percent = totalAll > 0 ? Math.round((totalCompleted / totalAll) * 100) : 0;
+
+            document.getElementById('stat-pending').innerText = totalPending;
+            document.getElementById('stat-completed').innerText = totalCompleted;
+            document.getElementById('stat-percent').innerText = `${percent}%`;
+            document.getElementById('stat-progress-bar').style.width = `${percent}%`;
+
+            document.getElementById('count-all').innerText = totalAll;
+            document.getElementById('count-pending').innerText = totalPending;
+            document.getElementById('count-completed').innerText = totalCompleted;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            // Render list HTML
+            container.innerHTML = filtered.map(task => {
+                const sub = SUBJECTS.find(s => s.id === task.subjectId) || { name: 'Allgemein', color: 'bg-slate-500', text: 'text-slate-400', border: 'border-slate-500/30', bgLight: 'bg-slate-500/10' };
+                
+                // Formatting Date
+                const dueDate = new Date(task.date);
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const dueCopy = new Date(dueDate);
+                dueCopy.setHours(0,0,0,0);
+
+                const diffDays = Math.round((dueCopy - today) / (1000 * 60 * 60 * 24));
+
+                let dateBadgeClass = "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300";
+                let dateText = dueDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+
+                if (diffDays === 0) {
+                    dateText = "Heute abzugeben";
+                    dateBadgeClass = "bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/30";
+                } else if (diffDays === 1) {
+                    dateText = "Morgen abzugeben";
+                    dateBadgeClass = "bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/30";
+                } else if (diffDays < 0) {
+                    dateText = `Überfällig (${Math.abs(diffDays)} T.)`;
+                    dateBadgeClass = "bg-rose-600 text-white font-bold";
+                }
+
+                // Priority Badge
+                let priorityBadge = '';
+                if (task.priority === 'high') {
+                    priorityBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30">🔥 Dringend</span>`;
+                }
+
+                return `
+                    <div class="glass-card rounded-2xl p-4 flex items-start justify-between gap-4 transition hover:border-slate-300 dark:hover:border-slate-700 ${task.completed ? 'opacity-60 bg-slate-100/50 dark:bg-slate-900/40' : ''}">
+                        <div class="flex items-start space-x-3.5 flex-1 min-w-0">
+                            <!-- Checkbox button -->
+                            <button onclick="toggleTaskComplete('${task.id}')" class="mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition active:scale-90 ${task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500'}">
+                                ${task.completed ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                            </button>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                                    <span class="px-2.5 py-0.5 rounded-lg text-xs font-semibold ${sub.bgLight} ${sub.text} border ${sub.border}">
+                                        ${escapeHtml(sub.name)}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded-lg text-xs font-medium ${dateBadgeClass}">
+                                        <i class="fa-regular fa-clock mr-1"></i>${dateText}
+                                    </span>
+                                    ${priorityBadge}
+                                    ${task.notify ? '<span title="Erinnerung aktiv" class="text-xs text-indigo-500"><i class="fa-solid fa-bell"></i></span>' : ''}
+                                </div>
+
+                                <h3 class="text-base font-semibold text-slate-900 dark:text-white ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}">
+                                    ${escapeHtml(task.title)}
+                                </h3>
+
+                                ${task.notes ? `
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed bg-slate-100/80 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-200/50 dark:border-slate-700/30">
+                                        ${escapeHtml(task.notes)}
+                                    </p>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Action buttons -->
+                        <div class="flex items-center space-x-1">
+                            <button onclick="deleteTask('${task.id}')" title="Aufgabe löschen" class="text-slate-400 hover:text-rose-500 p-2 rounded-lg transition active:scale-90">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openAddTaskModal() {
+            const modal = document.getElementById('add-task-modal');
+            const modalContent = document.getElementById('add-task-modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeAddTaskModal() {
+            const modal = document.getElementById('add-task-modal');
+            const modalContent = document.getElementById('add-task-modal-content');
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function openAddSubjectModal() {
+            const modal = document.getElementById('add-subject-modal');
+            const modalContent = document.getElementById('add-subject-modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeAddSubjectModal() {
+            const modal = document.getElementById('add-subject-modal');
+            const modalContent = document.getElementById('add-subject-modal-content');
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function openGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            const modalContent = document.getElementById('guide-modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            const modalContent = document.getElementById('guide-modal-content');
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
